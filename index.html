@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Token System - Live Updates</title>
+    <style>
+        /* Modern UI matching your screenshots */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        /* Navigation Tabs (Photo 4 style) */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
+        .tab-btn {
+            flex: 1; padding: 15px; background: white; border: none;
+            border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s;
+        }
+        .tab-btn.active { background: #4CAF50; color: white; }
+
+        .panel {
+            display: none; background: white; padding: 30px;
+            border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .panel.active { display: block; }
+
+        /* Form elements */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px;
+        }
+
+        .doc-requirement {
+            background: #fff3cd; color: #856404; padding: 15px;
+            border-radius: 8px; border: 1px solid #ffeeba; margin-top: 10px; display: none;
+        }
+
+        .btn {
+            padding: 15px; background: #2196F3; color: white; border: none;
+            border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-size: 18px;
+        }
+
+        /* Status Results (Photo 3 & 8 style) */
+        .result-card { text-align: center; border-left: 5px solid #4CAF50; padding: 20px; background: #fdfdfd; }
+        .token-large { font-size: 6em; font-weight: bold; color: #4CAF50; margin: 10px 0; }
+        .wait-text { color: #f44336; font-weight: bold; font-size: 1.2em; }
+        
+        /* Display Monitor (Photo 6 style) */
+        .monitor {
+            background: #000; color: #0f0; padding: 80px 20px;
+            border-radius: 15px; text-align: center; border: 15px solid #fff;
+        }
+        .monitor .big-token { font-size: 10em; font-weight: bold; text-shadow: 0 0 20px #0f0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openTab(event, 'register')">Register</button>
+        <button class="tab-btn" onclick="openTab(event, 'check')">Check Status</button>
+        <button class="tab-btn" onclick="openTab(event, 'admin')">Admin</button>
+        <button class="tab-btn" onclick="openTab(event, 'display')">Display Screen</button>
+    </div>
+
+    <div id="register" class="panel active">
+        <h2>📝 Token Registration</h2>
+        <form onsubmit="generateToken(event)">
+            <div class="form-group">
+                <label>Full Name *</label>
+                <input type="text" id="userName" required>
+            </div>
+            <div class="form-group">
+                <label>Mobile Number *</label>
+                <input type="tel" id="userMobile" required>
+            </div>
+            <div class="form-group">
+                <label>Select Task Number *</label>
+                <select id="taskSelect" onchange="showDocReq()" required>
+                    <option value="">-- Select a Task --</option>
+                    <option value="5" data-doc="Identity Card (PDF)">Task 1 (5 min)</option>
+                    <option value="10" data-doc="Address Proof (PDF/JPG)">Task 2 (10 min)</option>
+                    <option value="15" data-doc="Work Permit / License">Task 3 (15 min)</option>
+                    <option value="20" data-doc="Bank Statements (Last 3 months)">Task 4 (20 min)</option>
+                    <option value="25" data-doc="Medical Certificates">Task 5 (25 min)</option>
+                    <option value="30" data-doc="Business Registration Docs">Task 6 (30 min)</option>
+                </select>
+                <div id="docInfo" class="doc-requirement">
+                    💡 <strong>Requirement:</strong> Please upload <span id="docName"></span> below.
+                </div>
+            </div>
+            <div id="uploadArea" class="form-group" style="display:none;">
+                <label>Upload Document *</label>
+                <input type="file" id="userFile" required>
+            </div>
+            <button type="submit" class="btn" style="background: #4CAF50;">Generate Token</button>
+        </form>
+    </div>
+
+    <div id="check" class="panel">
+        <h2>🔍 Check Your Token</h2>
+        <input type="text" id="checkInp" placeholder="Enter Token ID (e.g., T001)" class="form-group" style="width:100%; text-transform:uppercase; padding:12px;">
+        <button onclick="checkToken()" class="btn">Search Token</button>
+
+        <div id="statusBox" class="result-card" style="display:none; margin-top: 20px;">
+            <div id="resBadge" style="background:#eee; padding:5px 10px; border-radius:10px; font-size:12px;">WAITING</div>
+            <div class="token-large" id="resID">T000</div>
+            <p><strong>Estimated Wait:</strong> <span class="wait-text" id="resWait">0 minutes</span></p>
+            <p style="color:#2196F3; margin-top:10px;">Currently Serving: <span id="resRun">None</span></p>
+        </div>
+    </div>
+
+    <div id="admin" class="panel">
+        <h2>⚙️ Admin Control</h2>
+        <button onclick="callNext()" class="btn" style="background: #ff9800; margin-bottom: 20px;">📢 Call Next Customer</button>
+        <div id="adminQueue"></div>
+    </div>
+
+    <div id="display" class="panel">
+        <div class="monitor">
+            <h2>NOW SERVING</h2>
+            <div class="big-token" id="monToken">---</div>
+            <p style="font-size: 24px;">Counter: 1</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    let tokens = JSON.parse(localStorage.getItem('token_sys')) || [];
+    let sysCount = parseInt(localStorage.getItem('token_count')) || 0;
+
+    function save() {
+        localStorage.setItem('token_sys', JSON.stringify(tokens));
+        localStorage.setItem('token_count', sysCount);
+    }
+
+    // FEATURE: Dynamic document requirements based on task
+    function showDocReq() {
+        const sel = document.getElementById('taskSelect');
+        const info = document.getElementById('docInfo');
+        const area = document.getElementById('uploadArea');
+        const docSpan = document.getElementById('docName');
+
+        if (sel.value) {
+            const doc = sel.options[sel.selectedIndex].getAttribute('data-doc');
+            docSpan.innerText = doc;
+            info.style.display = 'block';
+            area.style.display = 'block';
+        } else {
+            info.style.display = 'none';
+            area.style.display = 'none';
+        }
+    }
+
+    function generateToken(e) {
+        e.preventDefault();
+        sysCount++;
+        const tid = 'T' + String(sysCount).padStart(3, '0');
+        const sel = document.getElementById('taskSelect');
+
+        tokens.push({
+            id: tid,
+            name: document.getElementById('userName').value,
+            time: parseInt(sel.value),
+            taskName: sel.options[sel.selectedIndex].text,
+            status: 'waiting',
+            startTime: null
+        });
+
+        save();
+        alert("Success! Your Token is " + tid);
+        e.target.reset();
+        showDocReq();
+    }
+
+    // FIX: Time now decreases based on real-time elapsed
+    function calculateLiveWait(token) {
+        let totalWait = 0;
+        const myIdx = tokens.indexOf(token);
+        const active = tokens.find(t => t.status === 'current');
+
+        // 1. Add remaining time of the current person being served
+        if (active) {
+            const elapsedMs = Date.now() - active.startTime;
+            const elapsedMins = Math.floor(elapsedMs / 60000);
+            const remaining = Math.max(0, active.time - elapsedMins);
+            
+            if (token === active) return remaining;
+            totalWait += remaining;
+        }
+
+        // 2. Add full time of everyone between the current person and the user
+        let startIdx = active ? tokens.indexOf(active) + 1 : 0;
+        for (let i = startIdx; i < myIdx; i++) {
+            if (tokens[i].status === 'waiting') {
+                totalWait += tokens[i].time;
+            }
+        }
+        return totalWait;
+    }
+
+    function checkToken() {
+        const tid = document.getElementById('checkInp').value.toUpperCase();
+        const found = tokens.find(t => t.id === tid);
+        if (!found) return alert("Token not found");
+
+        const box = document.getElementById('statusBox');
+        const active = tokens.find(t => t.status === 'current');
+
+        document.getElementById('resID').innerText = found.id;
+        document.getElementById('resBadge').innerText = found.status.toUpperCase();
+        document.getElementById('resWait').innerText = calculateLiveWait(found) + " minutes";
+        document.getElementById('resRun').innerText = active ? active.id : "None";
+        box.style.display = 'block';
+    }
+
+    function callNext() {
+        const current = tokens.find(t => t.status === 'current');
+        if (current) current.status = 'completed';
+
+        const next = tokens.find(t => t.status === 'waiting');
+        if (next) {
+            next.status = 'current';
+            next.startTime = Date.now(); // Start the timer for live decrease
+            save();
+            refreshAdmin();
+            alert("Calling " + next.id);
+        }
+    }
+
+    // Live update for the status screen every 30 seconds
+    setInterval(() => {
+        if (document.getElementById('statusBox').style.display === 'block') {
+            checkToken();
+        }
+    }, 30000);
+
+    function refreshAdmin() {
+        const container = document.getElementById('adminQueue');
+        container.innerHTML = tokens.map(t => `
+            <div style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; background:${t.status==='current'?'#e8f5e9':'#fff'}">
+                <span><b>${t.id}</b> - ${t.name}</span>
+                <span>${t.status.toUpperCase()}</span>
+            </div>
+        `).join('');
+    }
+
+    function openTab(e, id) {
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        e.currentTarget.classList.add('active');
+        if (id === 'admin') refreshAdmin();
+        if (id === 'display') {
+            const active = tokens.find(t => t.status === 'current');
+            document.getElementById('monToken').innerText = active ? active.id : "---";
+        }
+    }
+</script>
+</body>
+</html>
